@@ -27,7 +27,7 @@ function makeRequest(url, params) {
   if (status === 200) {
     return responseText;
 
-  // Otherwise log and throw an error
+    // Otherwise log and throw an error
   } else {
     Logger.log(`There was a ${status} error fetching ${url}.`);
     Logger.log(responseText);
@@ -46,15 +46,15 @@ function downloadAllTransactions() {
 
   // Prepare the request body
   const body = {
-  "client_id": getSecrets().CLIENT_ID,
-  "secret": getSecrets().SECRET,
-  "access_token": getSecrets().ACCESS_TOKEN,
-  "options": {
-    "count": 500,
-    "offset": 0
-  },
-  "start_date": "2017-01-01",
-  "end_date": "2030-01-01" 
+    "client_id": getSecrets().CLIENT_ID,
+    "secret": getSecrets().SECRET,
+    "access_token": getSecrets().ACCESS_TOKEN,
+    "options": {
+      "count": 500,
+      "offset": 0
+    },
+    "start_date": "2017-01-01",
+    "end_date": "2030-01-01"
   };
 
   // Condense the above into a single object
@@ -74,12 +74,17 @@ function downloadAllTransactions() {
   Logger.log(`There are ${total_count} transactions in Plaid.`);
 
   // Make repeated requests
-  while (offset <= total_count-1) {
-    offset = offset+500;
+  while (offset <= total_count - 1) {
+    offset = offset + 500;
     body.options.offset = offset;
     params.payload = JSON.stringify(body);
     r = JSON.parse(makeRequest(getSecrets().URL, params));
     result.transactions = result.transactions.concat(r.transactions);
+  }
+
+  // Replace the dates with JavaScript dates
+  for (let i = 0; i < result.transactions.length; i++) {
+    result.transactions[i].date = Date.parse(result.transactions[i].date);
   }
 
   Logger.log(`We downloaded ${result.transactions.length} transactions from Plaid.`);
@@ -92,10 +97,10 @@ function downloadAllTransactions() {
  * Fetch the transactions that are currently on the sheet.
  * 
  * @param {SpreadsheetApp.Sheet} sheet the sheet to fetch the transactions from.
- * @return {object} the transactions.
+ * @return {Object} the transactions.
  */
 function getTransactionsFromSheet(sheet) {
-  
+
   const result = {};
   result.transactions = [];
   result.available = 0.0;
@@ -103,19 +108,19 @@ function getTransactionsFromSheet(sheet) {
 
   // Get the headers
   result.headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().flat();
-  result.headers = result.headers.map(item => item.replace("?", ""));
+  result.headers = result.headers.map(item => item.replace("?", ""))
 
   // Get the transactions, starting with most recent
-  for (let i = sheet.getLastRow()-1; i>=2; i--) {
+  for (let i = sheet.getLastRow() - 1; i >= 2; i--) {
     if (sheet.getRange(i, 1).getValue() !== "") {
 
       const newTransaction = {}
-      for (let j = 0; j<result.headers.length; j++) {
-        newTransaction[result.headers[j].toLowerCase()] = sheet.getRange(i, j+1).getValue()
+      for (let j = 0; j < result.headers.length; j++) {
+        newTransaction[result.headers[j].toLowerCase()] = sheet.getRange(i, j + 1).getValue();
       }
       result.transactions.push(newTransaction);
     }
-    
+
     // Increment the balance(s)
     result.current += Number(sheet.getRange(i, 8).getValue());
     if (sheet.getRange(i, 9).getValue() === false) {
@@ -135,9 +140,9 @@ function getTransactionsFromSheet(sheet) {
 /**
  * Convert a Plaid transaction to a transaction for the sheet.
  * 
- * @param {object} transaction the transaction to convert
- * @param {object} existing the existing transaction to update
- * @return {object} the converted transaction
+ * @param {Object} transaction the transaction to convert.
+ * @param {Object} existing the existing transaction to update.
+ * @return {Object} the converted transaction.
  */
 function plaidToSheet(transaction, existing = undefined) {
 
