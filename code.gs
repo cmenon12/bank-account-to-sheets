@@ -130,3 +130,57 @@ function getTransactionsFromSheet(sheet) {
 
 
 }
+
+
+/**
+ * Convert a Plaid transaction to a transaction for the sheet.
+ * 
+ * @param {object} transaction the transaction to convert
+ * @param {object} existing the existing transaction to update
+ * @return {object} the converted transaction
+ */
+function plaidToSheet(transaction, existing = undefined) {
+
+  // Determine the ID
+  let id;
+  if (transaction.pending === true) {
+    id = transaction.pending_transaction_id;
+  } else {
+    id = transaction_id;
+  }
+
+  // Determine the subcategory
+  let subcategory = "";
+  for (let i = 1; i < transaction.category.length; i++) {
+    subcategory = subcategory + transaction.category[i] + " ";
+  }
+  subcategory = subcategory.slice(0, -1);
+
+  // Use existing values if we have them
+  let internal;
+  let notes;
+  if (existing !== undefined) {
+    internal = false;
+    notes = "";
+
+  } else {
+    internal = existing.internal;
+    notes = existing.notes;
+  }
+
+  // Return the transaction for the sheet
+  return {
+    "id": id,
+    "date": transaction.date,
+    "name": transaction.name,
+    "category": transaction.category[0],
+    "subcategory": subcategory,
+    "channel": transaction.channel,
+    "type": transaction.transaction_type,
+    "amount": transaction.amount,
+    "pending": transaction.pending,
+    "internal": internal,
+    "notes": notes
+  }
+
+}
