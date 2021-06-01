@@ -10,6 +10,11 @@
 
 /**
  * Make a request to the URL using the params.
+ * 
+ * @param {string} url the URL to make the request to.
+ * @param {Object} params the params to use with the request.
+ * @return {string} the text of the response if successful.
+ * @throws {Error} response status code was not 200.
  */
 function makeRequest(url, params) {
 
@@ -34,6 +39,8 @@ function makeRequest(url, params) {
 
 /**
  * Downloads and returns all transactions.
+ * 
+ * @return {Object} the result of transactions.get, with all transactions.
  */
 function downloadAllTransactions() {
 
@@ -64,7 +71,7 @@ function downloadAllTransactions() {
   let offset = 0;
   let r;
 
-  Logger.log(`There are ${total_count} transactions.`)
+  Logger.log(`There are ${total_count} transactions in Plaid.`);
 
   // Make repeated requests
   while (offset <= total_count-1) {
@@ -75,7 +82,51 @@ function downloadAllTransactions() {
     result.transactions = result.transactions.concat(r.transactions);
   }
 
-  Logger.log(`We downloaded ${result.transactions.length} transactions.`)
+  Logger.log(`We downloaded ${result.transactions.length} transactions from Plaid.`);
   return result;
+
+}
+
+
+/**
+ * Fetch the transactions that are currently on the sheet.
+ * 
+ * @param {SpreadsheetApp.Sheet} sheet the sheet to fetch the transactions from.
+ * @return {object} the transactions.
+ */
+function getTransactionsFromSheet(sheet) {
+  
+  const result = {};
+  result.transactions = [];
+  result.available = 0.0;
+  result.current = 0.0;
+
+  // Get the headers
+  result.headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().flat();
+  result.headers = result.headers.map(item => item.replace("?", ""));
+
+  // Get the transactions, starting with most recent
+  for (let i = sheet.getLastRow()-1; i>=2; i--) {
+    if (sheet.getRange(i, 1).getValue() !== "") {
+
+      const newTransaction = {}
+      for (let j = 0; j<result.headers.length; j++) {
+        newTransaction[result.headers[j].toLowerCase()] = sheet.getRange(i, j+1).getValue()
+      }
+      result.transactions.push(newTransaction);
+    }
+    
+    // Increment the balance(s)
+    result.current += Number(sheet.getRange(i, 8).getValue());
+    if (sheet.getRange(i, 9).getValue() === false) {
+      result.available += Number(sheet.getRange(i, 8).getValue());
+    }
+
+  }
+
+  Logger.log(`We fetched ${result.transactions.length} transactions from the sheet named ${sheet.getName()}.`);
+
+  return result;
+
 
 }
