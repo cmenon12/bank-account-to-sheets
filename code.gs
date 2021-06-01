@@ -189,3 +189,22 @@ function plaidToSheet(transaction, existing = undefined) {
   }
 
 }
+
+
+/** 
+ * Searches transactions for the transaction with the ID, and returns its index.
+ * Painfully inefficient.
+ * 
+ * @param {Object[]} transactions the transactions to search.
+ * @param {string} the ID to search for.
+ * @return {Number} the index of the transaction, or -1 if it doesn't exist.
+*/
+function getExisitingIndexById(transactions, id) {
+
+  for (let i = 0; i < transactions.length; i++) {
+    if (transactions[i].id === id) {
+      return i
+    }
+  }
+  return -1
+}
