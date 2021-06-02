@@ -107,11 +107,12 @@ function getTransactionsFromSheet(sheet) {
   result.current = 0.0;
 
   // Get the headers
-  result.headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues().flat();
-  result.headers = result.headers.map(item => item.replace("?", ""))
+  result.headers = sheet.getRange(7, 1, 1, sheet.getLastColumn()).getValues().flat();
+  result.headers = result.headers.map(item => item.replace("?", ""));
+  result.headers = result.headers.map(item => item.toLowerCase());
 
   // Get the transactions, starting with most recent
-  for (let i = sheet.getLastRow() - 1; i >= 2; i--) {
+  for (let i = 8; i <= sheet.getLastRow(); i++) {
     if (sheet.getRange(i, 1).getValue() !== "") {
 
       const newTransaction = {}
@@ -146,14 +147,6 @@ function getTransactionsFromSheet(sheet) {
  */
 function plaidToSheet(transaction, existing = undefined) {
 
-  // Determine the ID
-  let id;
-  if (transaction.pending === true) {
-    id = transaction.pending_transaction_id;
-  } else {
-    id = transaction_id;
-  }
-
   // Determine the subcategory
   let subcategory = "";
   for (let i = 1; i < transaction.category.length; i++) {
@@ -164,7 +157,7 @@ function plaidToSheet(transaction, existing = undefined) {
   // Use existing values if we have them
   let internal;
   let notes;
-  if (existing !== undefined) {
+  if (existing === undefined) {
     internal = false;
     notes = "";
 
@@ -175,14 +168,13 @@ function plaidToSheet(transaction, existing = undefined) {
 
   // Return the transaction for the sheet
   return {
-    "id": id,
+    "id": transaction.transaction_id,
     "date": transaction.date,
     "name": transaction.name,
     "category": transaction.category[0],
     "subcategory": subcategory,
-    "channel": transaction.channel,
-    "type": transaction.transaction_type,
-    "amount": transaction.amount,
+    "channel": transaction.payment_channel,
+    "amount": -transaction.amount,
     "pending": transaction.pending,
     "internal": internal,
     "notes": notes
@@ -227,8 +219,8 @@ function insertNewTransaction(transactions, transaction) {
     }
   }
 
-  // If the new transaction is the newest then add it at the end
-  transactions.push(transaction);
+  // If the new transaction is the newest then add it at the start
+  transactions.unshift(transaction);
   return transactions;
 
 }
