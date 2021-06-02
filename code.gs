@@ -224,3 +224,34 @@ function insertNewTransaction(transactions, transaction) {
   return transactions;
 
 }
+
+
+/**
+ * Writes the transactions to the sheet.
+ * 
+ * @param {SpreadsheetApp.Sheet} sheet the sheet to write the transactions to.
+ * @param {Object[]} transaction the transactions to write.
+ * @param {string[]} headers the headers of the sheet.
+ */
+function writeTransactionsToSheet(sheet, transactions, headers) {
+
+  for (let i = 0; i < transactions.length; i++) {
+
+    for (const [key, value] of Object.entries(transactions[i])) {
+      if (key === "date") {
+        let date = new Date();
+        date.setTime(value);
+        sheet.getRange(i + 8, headers.indexOf(key) + 1).setValue(date);
+      } else {
+        sheet.getRange(i + 8, headers.indexOf(key) + 1).setValue(value);
+      }
+    }
+
+    if (i % 100 === 0 && i > 0) {
+      Logger.log(`Just passed existing transaction no. ${i}.`);
+      SpreadsheetApp.flush();
+    }
+
+  }
+
+}
