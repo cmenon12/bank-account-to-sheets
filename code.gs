@@ -208,3 +208,27 @@ function getExisitingIndexById(transactions, id) {
   }
   return -1
 }
+
+
+/**
+ * Inserts the transaction into transactions in the correct place.
+ * 
+ * @param {Object[]} transactions the list of transactions.
+ * @param {Object} transaction the transaction to insert.
+ * @return {Object[]} the updated transactions.
+ */
+function insertNewTransaction(transactions, transaction) {
+
+  // Insert it just before the first element with the larger date
+  for (let i = 0; i < transactions.length; i++) {
+    if (transaction.date < transactions[i].date) {
+      transactions.splice(i, 0, transaction);
+      return transactions;
+    }
+  }
+
+  // If the new transaction is the newest then add it at the end
+  transactions.push(transaction);
+  return transactions;
+
+}
