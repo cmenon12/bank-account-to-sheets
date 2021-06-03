@@ -223,7 +223,7 @@ function insertNewTransaction(transactions, transaction) {
 
   // Insert it when we first encounter an exisiting one with a smaller date
   for (let i = 0; i < transactions.length; i++) {
-    if (transaction.date > transactions[i].date) {
+    if (transaction.date >= transactions[i].date) {
       transactions.splice(i, 0, transaction);
       return transactions;
     }
@@ -320,11 +320,26 @@ function updateTransactions() {
   Logger.log("Finished iterating through Plaid transactions.");
   Logger.log(`There are ${existing.transactions.length} transactions to write.`)
 
+  // Write the transactions to the sheet
   writeTransactionsToSheet(sheet, existing.transactions, existing.headers);
   Logger.log(`Finished writing transactions to the sheet named ${sheet.getName()}.`)
 
+  // Format the sheet neatly
   formatNeatlyTransactions();
   Logger.log(`Finished formatting the sheet named ${sheet.getName()} neatly.`);
+
+  // Update when this script was last run
+  const range = sheet.getRange("TransactionsScriptLastRun");
+  if (range !== undefined) {
+    const date = new Date();
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    let minutes = date.getMinutes().toString();
+    if (parseInt(minutes) < 10) minutes = "0" + minutes;
+    const dateString = `Last updated on ${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} at ${date.getHours()}:${minutes}.`;
+    range.setValue(dateString);
+  }
 
 }
 
