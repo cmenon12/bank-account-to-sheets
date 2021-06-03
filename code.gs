@@ -337,9 +337,6 @@ function formatNeatlyTransactions() {
 
   // Get column letters (for A1 notation)
   const amountColNum = headers.indexOf("amount") + 1;
-  const amountColLetter = sheet.getRange(7, amountColNum).getA1Notation().slice(0, -1);
-  const pendingColLetter = sheet.getRange(7, headers.indexOf("pending") + 1).getA1Notation().slice(0, -1)
-  const internalColLetter = sheet.getRange(7, headers.indexOf("internal") + 1).getA1Notation().slice(0, -1)
 
   // Create named ranges
   for (let i = 0; i < headers.length; i++) {
@@ -372,6 +369,55 @@ function formatNeatlyTransactions() {
   // Freeze the top rows and hide the first column
   sheet.setFrozenRows(7);
   sheet.hideColumn(sheet.getRange("A1"));
+
+  // Recreate the filter
+  amountRange.getFilter().remove();
+  sheet.getRange(7, 1, sheet.getLastRow() - 6, sheet.getLastColumn()).createFilter();
+}
+
+
+/** 
+ * Formats the 'Weekly Summary' sheet neatly.
+*/
+function formatNeatlyWeeklySummary() {
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Weekly Summary");
+
+  // Hide rows in the future
+  const now = new Date();
+  for (let i = 3; i < sheet.getLastRow() - 1; i++) {
+    if (sheet.getRange(i, 2).getValue().getTime() <= now.getTime()) {
+      sheet.hideRows(3, i - 3)
+      break;
+    }
+  }
+
+  // Hide unused categories
+  sheet.showColumns(7, sheet.getLastColumn() - 6);
+  for (let i = 7; i < sheet.getLastColumn(); i++) {
+    if (sheet.getRange(sheet.getLastRow(), i).getValue() == 0) {
+      sheet.hideColumns(i, 1);
+    }
+  }
+
+}
+
+
+/**
+ * Runs all the formatNeatly functions.
+ */
+function formatAll() {
+  formatNeatlyTransactions()
+  formatNeatlyWeeklySummary()
+}
+
+
+/**
+ * Updates transactions and then formats everything neatly.
+ */
+function doEverything() {
+  updateTransactions()
+  formatNeatlyWeeklySummary()
 }
 
 
@@ -382,5 +428,10 @@ function onOpen() {
   const menu = SpreadsheetApp.getUi().createMenu("Scripts");
   menu.addItem("Update Transactions", "updateTransactions");
   menu.addItem("Format the Transactions sheet neatly", "formatNeatlyTransactions");
+  menu.addItem("Format the Weekly Summary sheet neatly", "formatNeatlyWeeklySummary");
+  menu.addSeparator();
+  menu.addItem("Format all sheets neatly", "formatAll");
+  menu.addSeparator();
+  menu.addItem("Do everything", "doEverything");
   menu.addToUi();
 }
