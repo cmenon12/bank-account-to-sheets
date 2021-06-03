@@ -113,14 +113,12 @@ function getTransactionsFromSheet(sheet) {
 
   // Get the transactions, starting with most recent
   for (let i = 8; i <= sheet.getLastRow(); i++) {
-    if (sheet.getRange(i, 1).getValue() !== "") {
-
-      const newTransaction = {}
-      for (let j = 0; j < result.headers.length; j++) {
-        newTransaction[result.headers[j].toLowerCase()] = sheet.getRange(i, j + 1).getValue();
-      }
-      result.transactions.push(newTransaction);
+    const newTransaction = {}
+    const values = sheet.getRange(i, 1, 1, result.headers.length).getValues().flat();
+    for (let j = 0; j < result.headers.length; j++) {
+      newTransaction[result.headers[j].toLowerCase()] = values[j];
     }
+    result.transactions.push(newTransaction);
 
     // Increment the balance(s)
     result.current += Number(sheet.getRange(i, 8).getValue());
@@ -211,16 +209,16 @@ function getExisitingIndexById(transactions, id) {
  */
 function insertNewTransaction(transactions, transaction) {
 
-  // Insert it just before the first element with the larger date
+  // Insert it when we first encounter an exisiting one with a smaller date
   for (let i = 0; i < transactions.length; i++) {
-    if (transaction.date < transactions[i].date) {
+    if (transaction.date > transactions[i].date) {
       transactions.splice(i, 0, transaction);
       return transactions;
     }
   }
 
-  // If the new transaction is the newest then add it at the start
-  transactions.unshift(transaction);
+  // If the new transaction is the oldest then add it at the end
+  transactions.push(transaction);
   return transactions;
 
 }
@@ -237,15 +235,17 @@ function writeTransactionsToSheet(sheet, transactions, headers) {
 
   for (let i = 0; i < transactions.length; i++) {
 
+    let result = headers.slice();
     for (const [key, value] of Object.entries(transactions[i])) {
       if (key === "date") {
         let date = new Date();
         date.setTime(value);
-        sheet.getRange(i + 8, headers.indexOf(key) + 1).setValue(date);
+        result[result.indexOf(key)] = date;
       } else {
-        sheet.getRange(i + 8, headers.indexOf(key) + 1).setValue(value);
+        result[result.indexOf(key)] = value;
       }
     }
+    sheet.getRange(i + 8, 1, 1, sheet.getLastColumn()).setValues([result]);
 
     if (i % 100 === 0 && i > 0) {
       Logger.log(`Just passed existing transaction no. ${i}.`);
