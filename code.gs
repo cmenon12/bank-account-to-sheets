@@ -261,9 +261,58 @@ function writeTransactionsToSheet(sheet, transactions, headers) {
 }
 
 
+/**
+ * Formats the sheet with the transactions neatly.
+ * 
+ * @param {SpreadsheetApp.Sheet} sheet the sheet to format neatly.
+ */
+function formatNeatly(sheet) {
+
+  // Get the headers
+  let headers = sheet.getRange(7, 1, 1, sheet.getLastColumn()).getValues().flat();
+  headers = headers.map(item => item.replace("?", ""));
+  headers = headers.map(item => item.toLowerCase());
+
+  // Get column letters (for A1 notation)
+  const amountColNum = headers.indexOf("amount") + 1;
+  const amountColLetter = sheet.getRange(7, amountColNum).getA1Notation().slice(0, -1);
+  const pendingColLetter = sheet.getRange(7, headers.indexOf("pending") + 1).getA1Notation().slice(0, -1)
+  const internalColLetter = sheet.getRange(7, headers.indexOf("internal") + 1).getA1Notation().slice(0, -1)
+
+  // Add the total titles, merge them, and hide the currently unused rows
+  sheet.getRange(6, 2, 1, amountColNum - 2).setValue("AVAILABLE BALANCE");
+  sheet.getRange(5, 2, 1, amountColNum - 2).setValue("AMOUNT PENDING");
+  sheet.getRange(4, 2, 1, amountColNum - 2).setValue("CURRENT BALANCE");
+  sheet.getRange(1, 2, 6, amountColNum - 2).mergeAcross();
+  sheet.hideRows(1, 3);
+
+  // Add the totals themselves
+  sheet.getRange(6, amountColNum).setValue(`=SUM(${amountColLetter}8:${amountColLetter}${sheet.getLastRow()})`);
+  sheet.getRange(5, amountColNum).setValue(`=SUMIF(${pendingColLetter}8:${pendingColLetter}${sheet.getLastRow()}, "=TRUE", ${amountColLetter}8:${amountColLetter}${sheet.getLastRow()})`);
+  sheet.getRange(4, amountColNum).setValue(`=SUMIF(${pendingColLetter}8:${pendingColLetter}${sheet.getLastRow()}, "=FALSE", ${amountColLetter}8:${amountColLetter}${sheet.getLastRow()})`);
+
+  // Convert the TRUE/FALSE columns to checkboxes
+  sheet.getRange(`${pendingColLetter}8:${pendingColLetter}${sheet.getLastRow()}`).insertCheckboxes();
+  sheet.getRange(`${internalColLetter}8:${internalColLetter}${sheet.getLastRow()}`).insertCheckboxes();
+
+  // Add conditional formatting to the amount column
+  const amountRange = sheet.getRange(`${amountColLetter}8:${amountColLetter}${sheet.getLastRow()}`);
+  const positiveRule = SpreadsheetApp.newConditionalFormatRule().setFontColor("#1B5E20").whenNumberGreaterThan(0).setRanges([amountRange]).build();
+  const negativeRule = SpreadsheetApp.newConditionalFormatRule().setFontColor("#B71C1C").whenNumberLessThan(0).setRanges([amountRange]).build();
+  sheet.setConditionalFormatRules([positiveRule, negativeRule]);
+
+  // Freeze the top rows and hide the first column
+  sheet.setFrozenRows(7);
+  sheet.hideColumn(sheet.getRange("A1"));
+
+}
+
+
 function updateTransactions() {
 
-  const existing = getTransactionsFromSheet(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions"));
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions");
+
+  const existing = getTransactionsFromSheet(sheet);
   const result = downloadAllTransactions();
   // Logger.log(JSON.stringify(existing));
   // Logger.log(JSON.stringify(result));
@@ -312,11 +361,20 @@ function updateTransactions() {
   Logger.log("Finished iterating through Plaid transactions.");
   Logger.log(`There are ${existing.transactions.length} transactions to write.`)
 
-  writeTransactionsToSheet(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions"), existing.transactions, existing.headers);
-  Logger.log("Finished writing transactions to sheet.")
+  writeTransactionsToSheet(sheet, existing.transactions, existing.headers);
+  Logger.log(`Finished writing transactions to the sheet named ${sheet.getName()}.`)
+
+  formatNeatly(sheet);
+  Logger.log(`Finished formatting the sheet named ${sheet.getName()} neatly.`);
+
+}
 
 
-
+/** 
+ * Runs formatNeatly() with the 'Transactions' sheet.
+*/
+function formatNeatlyTransactions() {
+  formatNeatly(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions"));
 }
 
 
@@ -326,5 +384,6 @@ function updateTransactions() {
 function onOpen() {
   const menu = SpreadsheetApp.getUi().createMenu("Scripts");
   menu.addItem("Update Transactions", "updateTransactions");
+  menu.addItem("Format the Transactions sheet neatly", "formatNeatly");
   menu.addToUi();
 }
