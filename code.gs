@@ -151,23 +151,29 @@ function getTransactionsFromSheet(sheet) {
  */
 function plaidToSheet(transaction, existing = undefined) {
 
-  // Determine the subcategory
-  let subcategory = "";
-  for (let i = 1; i < transaction.category.length; i++) {
-    subcategory = subcategory + transaction.category[i] + " ";
-  }
-  subcategory = subcategory.slice(0, -1);
-
   // Use existing values if we have them
   let internal;
   let notes;
+  let category;
+  let subcategory;
+  let channel;
   if (existing === undefined) {
     internal = false;
     notes = "";
+    category = transaction.category[0];
+    subcategory = "";
+    for (let i = 1; i < transaction.category.length; i++) {
+      subcategory = subcategory + transaction.category[i] + " ";
+    }
+    subcategory = subcategory.slice(0, -1);
+    channel = transaction.payment_channel;
 
   } else {
     internal = existing.internal;
     notes = existing.notes;
+    category = existing.category;
+    subcategory = existing.subcategory;
+    channel = existing.channel;
   }
 
   // Return the transaction for the sheet
@@ -175,7 +181,7 @@ function plaidToSheet(transaction, existing = undefined) {
     "id": transaction.transaction_id,
     "date": transaction.date,
     "name": transaction.name,
-    "category": transaction.category[0],
+    "category": category,
     "subcategory": subcategory,
     "channel": transaction.payment_channel,
     "amount": -transaction.amount,
@@ -365,6 +371,22 @@ function formatNeatlyTransactions() {
   const positiveRule = SpreadsheetApp.newConditionalFormatRule().setFontColor("#1B5E20").whenNumberGreaterThan(0).setRanges([amountRange]).build();
   const negativeRule = SpreadsheetApp.newConditionalFormatRule().setFontColor("#B71C1C").whenNumberLessThan(0).setRanges([amountRange]).build();
   sheet.setConditionalFormatRules([positiveRule, negativeRule]);
+
+  // Add data validation for the categories, subcategories, and channels
+  let range = sheet.getRange("categorys");
+  let values = sheet.getRange("Categories")
+  let rule = SpreadsheetApp.newDataValidation().requireValueInRange(values, true).setAllowInvalid(false).build();
+  range.setDataValidation(rule);
+
+  range = sheet.getRange("subcategorys");
+  values = sheet.getRange("Subcategories")
+  rule = SpreadsheetApp.newDataValidation().requireValueInRange(values, true).setAllowInvalid(false).build();
+  range.setDataValidation(rule);
+
+  range = sheet.getRange("channels");
+  values = sheet.getRange("ChannelsValues")
+  rule = SpreadsheetApp.newDataValidation().requireValueInRange(values, true).setAllowInvalid(false).build();
+  range.setDataValidation(rule);
 
   // Freeze the top rows and hide the first column
   sheet.setFrozenRows(7);
