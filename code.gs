@@ -259,3 +259,72 @@ function writeTransactionsToSheet(sheet, transactions, headers) {
   sheet.getRange(8, 1, result.length, sheet.getLastColumn()).setValues(result);
 
 }
+
+
+function updateTransactions() {
+
+  const existing = getTransactionsFromSheet(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions"));
+  const result = downloadAllTransactions();
+  // Logger.log(JSON.stringify(existing));
+  // Logger.log(JSON.stringify(result));
+
+  for (let i = 0; i < result.transactions.length; i++) {
+
+    let existingTransaction = undefined;
+    let existingIndex;
+
+    // If it has a pending ID then see if we have that
+    if (result.transactions[i].pending_transaction_id !== null) {
+      existingIndex = getExisitingIndexById(existing.transactions, result.transactions[i].pending_transaction_id);
+      if (existingIndex >= 0) {
+        existingTransaction = existing.transactions[existingIndex]
+
+        // If it has a pending ID but we don't have it from when it was pending
+      } else {
+        existingIndex = getExisitingIndexById(existing.transactions, result.transactions[i].transaction_id);
+
+        // If a transaction with that transaction_id already exists
+        if (existingIndex >= 0) {
+          existingTransaction = existing.transactions[existingIndex]
+        }
+      }
+
+      // If it doesn't have a pending ID
+    } else {
+      existingIndex = getExisitingIndexById(existing.transactions, result.transactions[i].transaction_id);
+
+      // If a transaction with that transaction_id already exists
+      if (existingIndex >= 0) {
+        existingTransaction = existing.transactions[existingIndex]
+      }
+    }
+
+
+    // Update existing with the transaction
+    const newTransaction = plaidToSheet(result.transactions[i], existingTransaction);
+    if (existingIndex >= 0) {
+      existing.transactions[existingIndex] = newTransaction;
+    } else {
+      existing.transactions = insertNewTransaction(existing.transactions, newTransaction);
+    }
+
+  }
+  Logger.log("Finished iterating through Plaid transactions.");
+  Logger.log(`There are ${existing.transactions.length} transactions to write.`)
+
+  writeTransactionsToSheet(SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions"), existing.transactions, existing.headers);
+  Logger.log("Finished writing transactions to sheet.")
+
+
+
+}
+
+
+/**
+ * Adds the Scripts menu to the menu bar at the top.
+ */
+function onOpen() {
+  const menu = SpreadsheetApp.getUi().createMenu("Scripts");
+  menu.addItem("Update Transactions", "updateTransactions");
+  menu.addToUi();
+}
