@@ -111,19 +111,25 @@ function getTransactionsFromSheet(sheet) {
   result.headers = result.headers.map(item => item.replace("?", ""));
   result.headers = result.headers.map(item => item.toLowerCase());
 
+  // Don't bother if it's empty
+  if (sheet.getLastRow() === 7) {
+    Logger.log(`We fetched ${result.transactions.length} transactions from the sheet named ${sheet.getName()}.`);
+    return result;
+  }
+
   // Get the transactions, starting with most recent
-  for (let i = 8; i <= sheet.getLastRow(); i++) {
+  const values = sheet.getRange(8, 1, sheet.getLastRow() - 7, sheet.getLastColumn()).getValues();
+  for (let i = 0; i < values.length; i++) {
     const newTransaction = {}
-    const values = sheet.getRange(i, 1, 1, result.headers.length).getValues().flat();
     for (let j = 0; j < result.headers.length; j++) {
-      newTransaction[result.headers[j].toLowerCase()] = values[j];
+      newTransaction[result.headers[j].toLowerCase()] = values[i][j];
     }
     result.transactions.push(newTransaction);
 
     // Increment the balance(s)
-    result.current += Number(sheet.getRange(i, 8).getValue());
-    if (sheet.getRange(i, 9).getValue() === false) {
-      result.available += Number(sheet.getRange(i, 8).getValue());
+    result.current += Number(values[i][6]);
+    if (values[i][7] === false) {
+      result.available += Number(values[i][6]);
     }
 
   }
@@ -233,25 +239,23 @@ function insertNewTransaction(transactions, transaction) {
  */
 function writeTransactionsToSheet(sheet, transactions, headers) {
 
+  const result = []
   for (let i = 0; i < transactions.length; i++) {
 
-    let result = headers.slice();
+    const row = headers.slice();
     for (const [key, value] of Object.entries(transactions[i])) {
       if (key === "date") {
         let date = new Date();
         date.setTime(value);
-        result[result.indexOf(key)] = date;
+        row[row.indexOf(key)] = date;
       } else {
-        result[result.indexOf(key)] = value;
+        row[row.indexOf(key)] = value;
       }
     }
-    sheet.getRange(i + 8, 1, 1, sheet.getLastColumn()).setValues([result]);
-
-    if (i % 100 === 0 && i > 0) {
-      Logger.log(`Just passed existing transaction no. ${i}.`);
-      SpreadsheetApp.flush();
-    }
+    result.push(row);
 
   }
+
+  sheet.getRange(8, 1, result.length, sheet.getLastColumn()).setValues(result);
 
 }
