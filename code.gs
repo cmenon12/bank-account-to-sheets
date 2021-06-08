@@ -162,9 +162,7 @@ function plaidToSheet(transaction, existing = undefined) {
     notes = "";
     category = transaction.category[0];
     subcategory = "";
-    for (let i = 1; i < transaction.category.length; i++) {
-      subcategory = subcategory + transaction.category[i] + " ";
-    }
+    for (const subcat of transaction.category.slice(1)) subcategory = subcategory + subcat + " ";
     subcategory = subcategory.slice(0, -1);
     channel = transaction.payment_channel;
 
@@ -203,7 +201,7 @@ function plaidToSheet(transaction, existing = undefined) {
 */
 function getExisitingIndexById(transactions, id) {
 
-  for (let i = 0; i < transactions.length; i++) {
+  for (let i = 0; i<transactions.length; i++) {
     if (transactions[i].id === id) {
       return i
     }
@@ -407,6 +405,12 @@ function formatNeatlyTransactions() {
   sheet.setFrozenRows(7);
   sheet.hideColumn(sheet.getRange("A1"));
 
+  // Add protection for ranges that shouldn't be edited
+  for (const protection of sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE)) protection.remove();
+  for (const name of ["ids", "dates", "names", "amounts", "pendings"]) {
+    sheet.getRange(name).protect().setWarningOnly(true);
+  }
+
   // Recreate the filter
   amountRange.getFilter().remove();
   sheet.getRange(7, 1, sheet.getLastRow() - 6, sheet.getLastColumn()).createFilter();
@@ -421,19 +425,12 @@ function formatNeatlyWeeklySummary() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Weekly Summary");
 
   // Hide rows in the future
+  sheet.showRows(1, sheet.getLastRow());
   const now = new Date();
   for (let i = 3; i < sheet.getLastRow() - 1; i++) {
     if (sheet.getRange(i, 2).getValue().getTime() <= now.getTime()) {
       sheet.hideRows(3, i - 3)
       break;
-    }
-  }
-
-  // Hide unused categories
-  sheet.showColumns(7, sheet.getLastColumn() - 6);
-  for (let i = 7; i < sheet.getLastColumn(); i++) {
-    if (sheet.getRange(sheet.getLastRow(), i).getValue() == 0) {
-      sheet.hideColumns(i, 1);
     }
   }
 
