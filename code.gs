@@ -201,7 +201,7 @@ function plaidToSheet(transaction, existing = undefined) {
 */
 function getExisitingIndexById(transactions, id) {
 
-  for (let i = 0; i<transactions.length; i++) {
+  for (let i = 0; i < transactions.length; i++) {
     if (transactions[i].id === id) {
       return i
     }
@@ -265,11 +265,68 @@ function writeTransactionsToSheet(sheet, transactions, headers) {
 }
 
 
+/**
+ * Checks if newExisting is identical to oldExisting.
+ * Very inefficient
+ * 
+ * @param {Object[]} oldTransactions the old transactions.
+ * @param {Object[]} newTransactions the new transactions with new changes.
+ * @return {boolean|Object} false if they're identical, or an object detailing differences.
+ */
+function checkForNewChanges(oldTransactions, newTransactions) {
+
+  // If their IDs are all equal
+  if (JSON.stringify(oldTransactions.map(a => a.id)) == JSON.stringify(newTransactions.map(a => a.id))) {
+    return false;
+  }
+
+  // Prepare to determine changes
+  const changes = {
+    "added": [],
+    "removed": []
+  }
+
+  // Find which old transactions have been removed
+  for (const transaction of oldTransactions) {
+    if (getExisitingIndexById(newTransactions, transaction.id) == -1) {
+      changes.removed.push(transaction);
+    }
+  }
+
+  // Find which new transactions have been added
+  for (const transaction of newTransactions) {
+    if (getExisitingIndexById(oldTransactions, transaction.id) == -1) {
+      changes.added.push(transaction);
+    }
+  }
+
+  return changes;
+
+}
+
+
+/**
+ * Formats the date as a nice string.
+ * 
+ * @param {Date} date the date to parse.
+ * @return {string} the nicely formatted date.
+ */
+function formatDate(date) {
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+
+}
+
+
 function updateTransactions() {
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions");
 
   const existing = getTransactionsFromSheet(sheet);
+  const oldTransactions = existing.transactions.slice();
   const result = downloadAllTransactions();
   // Logger.log(JSON.stringify(existing));
   // Logger.log(JSON.stringify(result));
@@ -316,26 +373,62 @@ function updateTransactions() {
 
   }
   Logger.log("Finished iterating through Plaid transactions.");
-  Logger.log(`There are ${existing.transactions.length} transactions to write.`)
 
-  // Write the transactions to the sheet
-  writeTransactionsToSheet(sheet, existing.transactions, existing.headers);
-  Logger.log(`Finished writing transactions to the sheet named ${sheet.getName()}.`)
+  const changes = checkForNewChanges(oldTransactions, existing.transactions);
 
-  // Format the sheet neatly
-  formatNeatlyTransactions();
-  Logger.log(`Finished formatting the sheet named ${sheet.getName()} neatly.`);
+  if (changes === false) {
+    Logger.log("No transactions were added or removed.");
+
+    // Tell the user that there were no new transactions
+    // An error is raised if this is called by the trigger
+    try {
+      SpreadsheetApp.getActiveSpreadsheet().toast("No new changes to the transactions were found.");
+    } catch (error) {
+
+    }
+  } else {
+    // Write the transactions to the sheet
+    Logger.log(`There are ${existing.transactions.length} transactions to write.`);
+    writeTransactionsToSheet(sheet, existing.transactions, existing.headers);
+    Logger.log(`Finished writing transactions to the sheet named ${sheet.getName()}.`)
+
+    // Format the sheet neatly
+    formatNeatlyTransactions();
+    Logger.log(`Finished formatting the sheet named ${sheet.getName()} neatly.`);
+
+    // Produce a message to tell the user of the changes
+    // An error is raised if this is called by the trigger
+    try {
+      const ui = SpreadsheetApp.getUi();
+      let message = "";
+      if (changes.added.length > 0) {
+        for (const transaction of changes.added) {
+          let date = new Date();
+          date.setTime(transaction.date);
+          message = `${message}ADDED: £${transaction.amount} on ${formatDate(date)} from ${transaction.name}.\r\n`
+        }
+      }
+      if (changes.added.length > 0) {
+        for (const transaction of changes.removed) {
+          let date = new Date();
+          date.setTime(transaction.date);
+          message = `${message}REMOVED: £${transaction.amount} on ${formatDate(date)} from ${transaction.name}.\r\n`
+        }
+      }
+      ui.alert(`${changes.added.length} added | ${changes.removed.length} removed`, message, ui.ButtonSet.OK);
+    } catch (error) {
+
+    }
+
+  }
 
   // Update when this script was last run
   const range = sheet.getRange("TransactionsScriptLastRun");
   if (range !== undefined) {
     const date = new Date();
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     let minutes = date.getMinutes().toString();
     if (parseInt(minutes) < 10) minutes = "0" + minutes;
-    const dateString = `Last updated on ${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} at ${date.getHours()}:${minutes}.`;
+    const dateString = `Last updated on ${formatDate(date)} at ${date.getHours()}:${minutes}.`;
     range.setValue(dateString);
   }
 
