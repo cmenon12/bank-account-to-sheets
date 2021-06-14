@@ -203,7 +203,28 @@ function getExisitingIndexById(transactions, id) {
 
   for (let i = 0; i < transactions.length; i++) {
     if (transactions[i].id === id) {
-      return i
+      return i;
+    }
+  }
+  return -1
+}
+
+
+/** 
+ * Searches transactions for the transaction with the ID, and returns its index.
+ * Painfully inefficient.
+ * 
+ * @param {Object[]} transactions the transactions to search.
+ * @param {string} the ID to search for.
+ * @return {Number} the index of the transaction, or -1 if it doesn't exist.
+*/
+function getPlaidIndexById(transactions, id) {
+
+  for (let i = 0; i < transactions.length; i++) {
+    if (transactions[i].transaction_id === id) {
+      return i;
+    } else if (transactions[i].pending_transaction_id === id) {
+      return i;
     }
   }
   return -1
@@ -260,47 +281,9 @@ function writeTransactionsToSheet(sheet, transactions, headers) {
 
   }
 
+  sheet.deleteRows(9, sheet.getLastRow()-8);
+  sheet.insertRowsAfter(8, result.length-1);
   sheet.getRange(8, 1, result.length, sheet.getLastColumn()).setValues(result);
-
-}
-
-
-/**
- * Checks if newExisting is identical to oldExisting.
- * Very inefficient
- * 
- * @param {Object[]} oldTransactions the old transactions.
- * @param {Object[]} newTransactions the new transactions with new changes.
- * @return {boolean|Object} false if they're identical, or an object detailing differences.
- */
-function checkForNewChanges(oldTransactions, newTransactions) {
-
-  // If their IDs are all equal
-  if (JSON.stringify(oldTransactions.map(a => a.id)) == JSON.stringify(newTransactions.map(a => a.id))) {
-    return false;
-  }
-
-  // Prepare to determine changes
-  const changes = {
-    "added": [],
-    "removed": []
-  }
-
-  // Find which old transactions have been removed
-  for (const transaction of oldTransactions) {
-    if (getExisitingIndexById(newTransactions, transaction.id) == -1) {
-      changes.removed.push(transaction);
-    }
-  }
-
-  // Find which new transactions have been added
-  for (const transaction of newTransactions) {
-    if (getExisitingIndexById(oldTransactions, transaction.id) == -1) {
-      changes.added.push(transaction);
-    }
-  }
-
-  return changes;
 
 }
 
@@ -326,10 +309,15 @@ function updateTransactions() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions");
 
   const existing = getTransactionsFromSheet(sheet);
-  const oldTransactions = existing.transactions.slice();
   const result = downloadAllTransactions();
   // Logger.log(JSON.stringify(existing));
   // Logger.log(JSON.stringify(result));
+
+  // Prepare to determine changes
+  const changes = {
+    "added": [],
+    "removed": []
+  }
 
   for (let i = 0; i < result.transactions.length; i++) {
 
@@ -362,21 +350,27 @@ function updateTransactions() {
       }
     }
 
-
     // Update existing with the transaction
     const newTransaction = plaidToSheet(result.transactions[i], existingTransaction);
     if (existingIndex >= 0) {
       existing.transactions[existingIndex] = newTransaction;
     } else {
       existing.transactions = insertNewTransaction(existing.transactions, newTransaction);
+      changes.added.push(newTransaction);
     }
 
   }
   Logger.log("Finished iterating through Plaid transactions.");
 
-  const changes = checkForNewChanges(oldTransactions, existing.transactions);
+  // Find which old transactions have been removed
+  for (const transaction of existing.transactions) {
+    if (getPlaidIndexById(result.transactions, transaction.id) == -1) {
+      existing.transactions.splice(existing.transactions.indexOf(transaction), 1);
+      changes.removed.push(transaction);
+    }
+  }
 
-  if (changes === false) {
+  if (changes.added.length == 0 && changes.removed.length == 0) {
     Logger.log("No transactions were added or removed.");
 
     // Tell the user that there were no new transactions
@@ -387,6 +381,7 @@ function updateTransactions() {
 
     }
   } else {
+
     // Write the transactions to the sheet
     Logger.log(`There are ${existing.transactions.length} transactions to write.`);
     writeTransactionsToSheet(sheet, existing.transactions, existing.headers);
@@ -408,7 +403,7 @@ function updateTransactions() {
           message = `${message}ADDED: £${transaction.amount} on ${formatDate(date)} from ${transaction.name}.\r\n`
         }
       }
-      if (changes.added.length > 0) {
+      if (changes.removed.length > 0) {
         for (const transaction of changes.removed) {
           let date = new Date();
           date.setTime(transaction.date);
