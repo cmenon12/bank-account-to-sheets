@@ -181,7 +181,7 @@ function plaidToSheet(transaction, existing = undefined) {
     "name": transaction.name,
     "category": category,
     "subcategory": subcategory,
-    "channel": transaction.payment_channel,
+    "channel": channel,
     "amount": -transaction.amount,
     "pending": transaction.pending,
     "internal": internal,
