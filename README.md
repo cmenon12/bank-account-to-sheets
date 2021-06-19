@@ -15,7 +15,7 @@ The simplest way to do this is by following their Quickstart guide here: [https:
 
 
 ### Creating the Google Sheet
-These scripts are designed to work with a specific Google Sheets template, which you can make your own copy of here: [https://docs.google.com/spreadsheets/d/1ZkSQwviwqdIXWb2EefQwYWmjq2sUUs6U3EB5LTqgyhU/copy](https://docs.google.com/spreadsheets/d/1ZkSQwviwqdIXWb2EefQwYWmjq2sUUs6U3EB5LTqgyhU/copy). Once you've done that, you can easily add the scripts and start importing your transactions.
+These scripts are designed to work with a specific Google Sheets template, which you can make your own copy of here: [https://docs.google.com/spreadsheets/d/1NzR1d8vzlPR0yxO-hRV37KB_dBkDRt1fnbDbeGXWT-w/copy](https://docs.google.com/spreadsheets/d/1NzR1d8vzlPR0yxO-hRV37KB_dBkDRt1fnbDbeGXWT-w/copy). Once you've done that, you can easily add the scripts and start importing your transactions.
 
 1. Make a copy of the Google Sheet above and open it. Don't worry about the example transactions, they'll be removed when you import your own.
 2. Go to Tools -> Script Editor, which should open a new Apps Script project.
