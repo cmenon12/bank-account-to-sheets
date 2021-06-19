@@ -1,3 +1,13 @@
+/*
+  =============================================================================
+  Project Page: https://github.com/cmenon12/bank-account-to-sheets
+  Copyright:    (c) 2021 by Christopher Menon
+  License:      GNU General Public License, version 3 (GPL-3.0)
+                http://www.opensource.org/licenses/gpl-3.0.html
+  =============================================================================
+ */
+
+
 function getSecrets() {
 
   const secrets = {};

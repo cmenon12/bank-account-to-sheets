@@ -1,6 +1,6 @@
 /*
   =============================================================================
-  Project Page: https://github.com/cmenon12/contemporary-choir
+  Project Page: https://github.com/cmenon12/bank-account-to-sheets
   Copyright:    (c) 2021 by Christopher Menon
   License:      GNU General Public License, version 3 (GPL-3.0)
                 http://www.opensource.org/licenses/gpl-3.0.html
@@ -137,7 +137,6 @@ function getTransactionsFromSheet(sheet) {
   Logger.log(`We fetched ${result.transactions.length} transactions from the sheet named ${sheet.getName()}.`);
 
   return result;
-
 
 }
 
@@ -304,6 +303,9 @@ function formatDate(date) {
 }
 
 
+/**
+ * Updates the transactions in the Transactions sheet.
+ */
 function updateTransactions() {
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions");
