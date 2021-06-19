@@ -10,7 +10,7 @@
 
 /**
  * Make a request to the URL using the params.
- * 
+ *
  * @param {string} url the URL to make the request to.
  * @param {Object} params the params to use with the request.
  * @return {string} the text of the response if successful.
@@ -31,7 +31,7 @@ function makeRequest(url, params) {
   } else {
     Logger.log(`There was a ${status} error fetching ${url}.`);
     Logger.log(responseText);
-    throw Error(`There was a ${status} error fetching ${url}.`)
+    throw Error(`There was a ${status} error fetching ${url}.`);
   }
 
 }
@@ -39,7 +39,7 @@ function makeRequest(url, params) {
 
 /**
  * Downloads and returns all transactions.
- * 
+ *
  * @return {Object} the result of transactions.get, with all transactions.
  */
 function downloadAllTransactions() {
@@ -95,7 +95,7 @@ function downloadAllTransactions() {
 
 /**
  * Fetch the transactions that are currently on the sheet.
- * 
+ *
  * @param {SpreadsheetApp.Sheet} sheet the sheet to fetch the transactions from.
  * @return {Object} the transactions.
  */
@@ -120,7 +120,7 @@ function getTransactionsFromSheet(sheet) {
   // Get the transactions, starting with most recent
   const values = sheet.getRange(8, 1, sheet.getLastRow() - 7, sheet.getLastColumn()).getValues();
   for (let i = 0; i < values.length; i++) {
-    const newTransaction = {}
+    const newTransaction = {};
     for (let j = 0; j < result.headers.length; j++) {
       newTransaction[result.headers[j].toLowerCase()] = values[i][j];
     }
@@ -144,7 +144,7 @@ function getTransactionsFromSheet(sheet) {
 
 /**
  * Convert a Plaid transaction to a transaction for the sheet.
- * 
+ *
  * @param {Object} transaction the transaction to convert.
  * @param {Object} existing the existing transaction to update.
  * @return {Object} the converted transaction.
@@ -186,38 +186,38 @@ function plaidToSheet(transaction, existing = undefined) {
     "pending": transaction.pending,
     "internal": internal,
     "notes": notes
-  }
+  };
 
 }
 
 
-/** 
+/**
  * Searches transactions for the transaction with the ID, and returns its index.
  * Painfully inefficient.
- * 
+ *
  * @param {Object[]} transactions the transactions to search.
- * @param {string} the ID to search for.
+ * @param {string} id ID to search for.
  * @return {Number} the index of the transaction, or -1 if it doesn't exist.
-*/
-function getExisitingIndexById(transactions, id) {
+ */
+function getExistingIndexById(transactions, id) {
 
   for (let i = 0; i < transactions.length; i++) {
     if (transactions[i].id === id) {
       return i;
     }
   }
-  return -1
+  return -1;
 }
 
 
-/** 
+/**
  * Searches transactions for the transaction with the ID, and returns its index.
  * Painfully inefficient.
- * 
+ *
  * @param {Object[]} transactions the transactions to search.
- * @param {string} the ID to search for.
+ * @param {string} id ID to search for.
  * @return {Number} the index of the transaction, or -1 if it doesn't exist.
-*/
+ */
 function getPlaidIndexById(transactions, id) {
 
   for (let i = 0; i < transactions.length; i++) {
@@ -227,20 +227,20 @@ function getPlaidIndexById(transactions, id) {
       return i;
     }
   }
-  return -1
+  return -1;
 }
 
 
 /**
  * Inserts the transaction into transactions in the correct place.
- * 
+ *
  * @param {Object[]} transactions the list of transactions.
  * @param {Object} transaction the transaction to insert.
  * @return {Object[]} the updated transactions.
  */
 function insertNewTransaction(transactions, transaction) {
 
-  // Insert it when we first encounter an exisiting one with a smaller date
+  // Insert it when we first encounter an existing one with a smaller date
   for (let i = 0; i < transactions.length; i++) {
     if (transaction.date >= transactions[i].date) {
       transactions.splice(i, 0, transaction);
@@ -257,14 +257,14 @@ function insertNewTransaction(transactions, transaction) {
 
 /**
  * Writes the transactions to the sheet.
- * 
+ *
  * @param {SpreadsheetApp.Sheet} sheet the sheet to write the transactions to.
- * @param {Object[]} transaction the transactions to write.
+ * @param {Object[]} transactions the transactions to write.
  * @param {string[]} headers the headers of the sheet.
  */
 function writeTransactionsToSheet(sheet, transactions, headers) {
 
-  const result = []
+  const result = [];
   for (let i = 0; i < transactions.length; i++) {
 
     const row = headers.slice();
@@ -281,8 +281,8 @@ function writeTransactionsToSheet(sheet, transactions, headers) {
 
   }
 
-  sheet.deleteRows(9, sheet.getLastRow()-8);
-  sheet.insertRowsAfter(8, result.length-1);
+  sheet.deleteRows(9, sheet.getLastRow() - 8);
+  sheet.insertRowsAfter(8, result.length - 1);
   sheet.getRange(8, 1, result.length, sheet.getLastColumn()).setValues(result);
 
 }
@@ -290,7 +290,7 @@ function writeTransactionsToSheet(sheet, transactions, headers) {
 
 /**
  * Formats the date as a nice string.
- * 
+ *
  * @param {Date} date the date to parse.
  * @return {string} the nicely formatted date.
  */
@@ -310,14 +310,12 @@ function updateTransactions() {
 
   const existing = getTransactionsFromSheet(sheet);
   const result = downloadAllTransactions();
-  // Logger.log(JSON.stringify(existing));
-  // Logger.log(JSON.stringify(result));
 
   // Prepare to determine changes
   const changes = {
     "added": [],
     "removed": []
-  }
+  };
 
   for (let i = 0; i < result.transactions.length; i++) {
 
@@ -326,13 +324,13 @@ function updateTransactions() {
 
     // If it has a pending ID then see if we have that
     if (result.transactions[i].pending_transaction_id !== null) {
-      existingIndex = getExisitingIndexById(existing.transactions, result.transactions[i].pending_transaction_id);
+      existingIndex = getExistingIndexById(existing.transactions, result.transactions[i].pending_transaction_id);
       if (existingIndex >= 0) {
         existingTransaction = existing.transactions[existingIndex]
 
         // If it has a pending ID but we don't have it from when it was pending
       } else {
-        existingIndex = getExisitingIndexById(existing.transactions, result.transactions[i].transaction_id);
+        existingIndex = getExistingIndexById(existing.transactions, result.transactions[i].transaction_id);
 
         // If a transaction with that transaction_id already exists
         if (existingIndex >= 0) {
@@ -342,7 +340,7 @@ function updateTransactions() {
 
       // If it doesn't have a pending ID
     } else {
-      existingIndex = getExisitingIndexById(existing.transactions, result.transactions[i].transaction_id);
+      existingIndex = getExistingIndexById(existing.transactions, result.transactions[i].transaction_id);
 
       // If a transaction with that transaction_id already exists
       if (existingIndex >= 0) {
@@ -364,13 +362,13 @@ function updateTransactions() {
 
   // Find which old transactions have been removed
   for (const transaction of existing.transactions) {
-    if (getPlaidIndexById(result.transactions, transaction.id) == -1) {
+    if (getPlaidIndexById(result.transactions, transaction.id) === -1) {
       existing.transactions.splice(existing.transactions.indexOf(transaction), 1);
       changes.removed.push(transaction);
     }
   }
 
-  if (changes.added.length == 0 && changes.removed.length == 0) {
+  if (changes.added.length === 0 && changes.removed.length === 0) {
     Logger.log("No transactions were added or removed.");
 
     // Tell the user that there were no new transactions
@@ -430,9 +428,9 @@ function updateTransactions() {
 }
 
 
-/** 
+/**
  * Formats the 'Transactions' sheet neatly.
-*/
+ */
 function formatNeatlyTransactions() {
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions");
@@ -505,9 +503,9 @@ function formatNeatlyTransactions() {
 }
 
 
-/** 
+/**
  * Formats the 'Weekly Summary' sheet neatly.
-*/
+ */
 function formatNeatlyWeeklySummary() {
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Weekly Summary");
