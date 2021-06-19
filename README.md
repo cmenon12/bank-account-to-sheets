@@ -38,5 +38,17 @@ Optionally, you can create a [time-driven trigger](https://developers.google.com
 - The access token doesn't expire, however it might need updating if the user (you) changes their password, or when working with European institutions that comply with PSD2's 90-day consent window. This can be done by re-authorising with the quickstart.
 
 
+## Important Points to Note About the Template
+- This template has been designed to work specifically with this script, so you should avoid modifying it (unless you're willing to modify the script too).
+- You can edit a transaction's category, subcategory, channel, internal status, and notes, and these changes will all be preserved when the transactions are updated. Changes to anything else (like the date, or the name) won't be.
+- Transactions marked as internal won't be included on the Weekly Summary sheet (except as part of the ending balance). This is designed for transactions that are transfers to or from your own accounts, and therefore don't represent money gained or spent by you.  
+- The option to format the Weekly Summary sheet neatly will adjust the hidden rows so that the current week is displayed at the top, and weeks in the future are hidden. 
+- You can change the categories on the Weekly Summary sheet to any category or subcategory that you want.
+  - Note that `Other Shops` isn't a category, but instead is the sum of everything categorised as `Shops`, minus those with the subcategories of `Supermarkets and Groceries` or `Clothing and Accessories`.
+  - The final categories column, `Other`, is simply the sum of all transactions, minus those in the displayed categories.
+- The Values sheet simply has a static list of all the available categories and subcategories, as well as list of which category each subcategory maps to.
+  - On the Transactions sheet, you don't have to enforce that a transaction's subcategory must come from its category, but it's probably sensible to.
+
+
 ## License
 [GNU GPLv3](https://choosealicense.com/licenses/gpl-3.0/)
