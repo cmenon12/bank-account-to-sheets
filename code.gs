@@ -124,6 +124,9 @@ function getTransactionsFromSheet(sheet) {
     for (let j = 0; j < result.headers.length; j++) {
       newTransaction[result.headers[j].toLowerCase()] = values[i][j];
     }
+    if (typeof newTransaction.date === "number") {
+      newTransaction.date = new Date(newTransaction.date)
+    }
     result.transactions.push(newTransaction);
 
     // Increment the balance(s)
@@ -191,20 +194,52 @@ function plaidToSheet(transaction, existing = undefined) {
 
 
 /**
- * Searches transactions for the transaction with the ID, and returns its index.
+ * Searches transactions to see if the given transaction already exists.
  * Painfully inefficient.
  *
- * @param {Object[]} transactions the transactions to search.
- * @param {string} id ID to search for.
+ * @param {Object[]} transactions the existing transactions to search.
+ * @param {Object} transaction the Plaid transaction to search for.
  * @return {Number} the index of the transaction, or -1 if it doesn't exist.
  */
-function getExistingIndexById(transactions, id) {
+function getExistingIndex(transactions, transaction) {
+
+  const sameDateAndAmount = [];
 
   for (let i = 0; i < transactions.length; i++) {
-    if (transactions[i].id === id) {
+
+    // Check the IDs
+    if (transactions[i].id === transaction.pending_transaction_id) {
+      return i;
+    } else if (transactions[i].id === transaction.transaction_id) {
       return i;
     }
+
+
+    /* Only enable when the ACCESS_TOKEN has been changed
+    // Check the date, name, and amount
+    let date = transactions[i].date
+    if (typeof date === "number") {
+      date = new Date(date)
+    }
+    if (date.getTime() === transaction.date &&
+      transactions[i].name === transaction.name &&
+      transactions[i].amount === -transaction.amount) {
+      return i;
+    }
+
+    // For if the name has changed
+    if (date.getTime() === transaction.date &&
+      transactions[i].amount === -transaction.amount) {
+      sameDateAndAmount.push(i)
+    }
+    */
   }
+
+  // If there was only one with that date and amount
+  if (sameDateAndAmount.length === 1) {
+    return sameDateAndAmount[0];
+  }
+
   return -1;
 }
 
@@ -213,7 +248,7 @@ function getExistingIndexById(transactions, id) {
  * Searches transactions for the transaction with the ID, and returns its index.
  * Painfully inefficient.
  *
- * @param {Object[]} transactions the transactions to search.
+ * @param {Object[]} transactions the Plaid transactions to search.
  * @param {string} id ID to search for.
  * @return {Number} the index of the transaction, or -1 if it doesn't exist.
  */
@@ -324,30 +359,10 @@ function updateTransactions() {
     let existingTransaction = undefined;
     let existingIndex;
 
-    // If it has a pending ID then see if we have that
-    if (result.transactions[i].pending_transaction_id !== null) {
-      existingIndex = getExistingIndexById(existing.transactions, result.transactions[i].pending_transaction_id);
-      if (existingIndex >= 0) {
-        existingTransaction = existing.transactions[existingIndex]
-
-        // If it has a pending ID but we don't have it from when it was pending
-      } else {
-        existingIndex = getExistingIndexById(existing.transactions, result.transactions[i].transaction_id);
-
-        // If a transaction with that transaction_id already exists
-        if (existingIndex >= 0) {
-          existingTransaction = existing.transactions[existingIndex]
-        }
-      }
-
-      // If it doesn't have a pending ID
-    } else {
-      existingIndex = getExistingIndexById(existing.transactions, result.transactions[i].transaction_id);
-
-      // If a transaction with that transaction_id already exists
-      if (existingIndex >= 0) {
-        existingTransaction = existing.transactions[existingIndex]
-      }
+    // Search for it in existing
+    existingIndex = getExistingIndex(existing.transactions, result.transactions[i]);
+    if (existingIndex >= 0) {
+      existingTransaction = existing.transactions[existingIndex]
     }
 
     // Update existing with the transaction
