@@ -552,6 +552,26 @@ function formatNeatlyWeeklySummary() {
 }
 
 
+/** 
+ * Searches for and returns the row number of the header row.
+ * 
+ * @param {SpreadsheetApp.Sheet} sheet the sheet to search.
+ * @return {number} the row number, or -1 if it can't be found.
+*/
+function getHeaderRowNumber(sheet) {
+
+  const range = sheet.getRange(1, 1, sheet.getLastRow()).getValues();
+  for (let i = 0; i < range.length; i++) {
+    if (range[i][0] === "ID") {
+      return i + 1;
+    }
+  }
+
+  return -1;
+
+}
+
+
 /**
  * Runs all the formatNeatly functions.
  */
