@@ -38,11 +38,11 @@ function makeRequest(url, params) {
 
 
 /**
- * Downloads and returns all transactions.
+ * Downloads and returns all transactions from Plaid.
  * 
  * @return {Object} the result of transactions.get, with all transactions.
  */
-function downloadAllTransactions() {
+function downloadAllTransactionsFromPlaid() {
 
   /*// Force Plaid to refresh the transactions
   let params = {
@@ -97,7 +97,7 @@ function downloadAllTransactions() {
   }
 
   // Replace the dates with JavaScript dates
-  for (const transaction of result.transactions) transaction.date = Date.parse(transaction.date);
+  for (const plaidTxn of result.transactions) plaidTxn.date = Date.parse(plaidTxn.date);
 
   Logger.log(`We downloaded ${result.transactions.length} transactions from Plaid.`);
   return result;
@@ -132,14 +132,14 @@ function getTransactionsFromSheet(sheet) {
   // Get the transactions, starting with most recent
   const values = sheet.getRange(getHeaderRowNumber(sheet) + 1, 1, sheet.getLastRow() - getHeaderRowNumber(sheet), sheet.getLastColumn()).getValues();
   for (let i = 0; i < values.length; i++) {
-    const newTransaction = {};
+    const newSheetTxn = {};
     for (let j = 0; j < result.headers.length; j++) {
-      newTransaction[result.headers[j].toLowerCase()] = values[i][j];
+      newSheetTxn[result.headers[j].toLowerCase()] = values[i][j];
     }
-    if (typeof newTransaction.date === "number") {
-      newTransaction.date = new Date(newTransaction.date)
+    if (typeof newSheetTxn.date === "number") {
+      newSheetTxn.date = new Date(newSheetTxn.date)
     }
-    result.transactions.push(newTransaction);
+    result.transactions.push(newSheetTxn);
 
     // Increment the balance(s)
     result.current += Number(values[i][6]);
@@ -159,11 +159,11 @@ function getTransactionsFromSheet(sheet) {
 /**
  * Convert a Plaid transaction to a transaction for the sheet.
  *
- * @param {Object} transaction the transaction to convert.
- * @param {Object} existing the existing transaction to update.
+ * @param {Object} plaidTxn the transaction to convert.
+ * @param {Object} sheetTxn the existing sheet transaction to update.
  * @return {Object} the converted transaction.
  */
-function plaidToSheet(transaction, existing = undefined) {
+function plaidToSheet(plaidTxn, sheetTxn = undefined) {
 
   // Use existing values if we have them
   let internal;
@@ -171,33 +171,33 @@ function plaidToSheet(transaction, existing = undefined) {
   let category;
   let subcategory;
   let channel;
-  if (existing === undefined) {
+  if (sheetTxn === undefined) {
     internal = false;
     notes = "";
-    category = transaction.category[0];
+    category = plaidTxn.category[0];
     subcategory = "";
-    for (const subcat of transaction.category.slice(1)) subcategory = subcategory + subcat + " ";
+    for (const subcat of plaidTxn.category.slice(1)) subcategory = subcategory + subcat + " ";
     subcategory = subcategory.slice(0, -1);
-    channel = transaction.payment_channel;
+    channel = plaidTxn.payment_channel;
 
   } else {
-    internal = existing.internal;
-    notes = existing.notes;
-    category = existing.category;
-    subcategory = existing.subcategory;
-    channel = existing.channel;
+    internal = sheetTxn.internal;
+    notes = sheetTxn.notes;
+    category = sheetTxn.category;
+    subcategory = sheetTxn.subcategory;
+    channel = sheetTxn.channel;
   }
 
   // Return the transaction for the sheet
   return {
-    "id": transaction.transaction_id,
-    "date": transaction.date,
-    "name": transaction.name,
+    "id": plaidTxn.transaction_id,
+    "date": plaidTxn.date,
+    "name": plaidTxn.name,
     "category": category,
     "subcategory": subcategory,
     "channel": channel,
-    "amount": -transaction.amount,
-    "pending": transaction.pending,
+    "amount": -plaidTxn.amount,
+    "pending": plaidTxn.pending,
     "internal": internal,
     "notes": notes
   };
@@ -206,42 +206,42 @@ function plaidToSheet(transaction, existing = undefined) {
 
 
 /**
- * Searches transactions to see if the given transaction already exists.
+ * Searches the transactions from the sheet to see if a given Plaid transaction already exists.
  * Painfully inefficient.
  *
- * @param {Object[]} transactions the existing transactions to search.
- * @param {Object} transaction the Plaid transaction to search for.
- * @return {Number} the index of the transaction, or -1 if it doesn't exist.
+ * @param {Object[]} sheetTxns the sheet transactions to search.
+ * @param {Object} plaidTxn the Plaid transaction to search for.
+ * @return {Number} the index of the plaidTxn, or -1 if it doesn't exist.
  */
-function getExistingIndex(transactions, transaction) {
+function getIndexOfPlaidFromSheet(sheetTxns, plaidTxn) {
 
   const sameDateAndAmount = [];
 
-  for (let i = 0; i < transactions.length; i++) {
+  for (let i = 0; i < sheetTxns.length; i++) {
 
     // Check the IDs
-    if (transactions[i].id === transaction.pending_transaction_id) {
+    if (sheetTxns[i].id === plaidTxn.pending_transaction_id) {
       return i;
-    } else if (transactions[i].id === transaction.transaction_id) {
+    } else if (sheetTxns[i].id === plaidTxn.transaction_id) {
       return i;
     }
 
 
     /* Only enable when the ACCESS_TOKEN has been changed
     // Check the date, name, and amount
-    let date = transactions[i].date
+    let date = sheetTxns[i].date
     if (typeof date === "number") {
       date = new Date(date)
     }
-    if (date.getTime() === transaction.date &&
-      transactions[i].name === transaction.name &&
-      transactions[i].amount === -transaction.amount) {
+    if (date.getTime() === plaidTxn.date &&
+      sheetTxns[i].name === plaidTxn.name &&
+      sheetTxns[i].amount === -plaidTxn.amount) {
       return i;
     }
 
     // For if the name has changed
-    if (date.getTime() === transaction.date &&
-      transactions[i].amount === -transaction.amount) {
+    if (date.getTime() === plaidTxn.date &&
+      sheetTxns[i].amount === -plaidTxn.amount) {
       sameDateAndAmount.push(i)
     }
     */
@@ -257,19 +257,19 @@ function getExistingIndex(transactions, transaction) {
 
 
 /**
- * Searches transactions for the transaction with the ID, and returns its index.
+ * Searches the transactions from plaid for the transaction with the ID, and returns its index.
  * Painfully inefficient.
  *
- * @param {Object[]} transactions the Plaid transactions to search.
+ * @param {Object[]} plaidTxns the Plaid transactions to search.
  * @param {string} id ID to search for.
  * @return {Number} the index of the transaction, or -1 if it doesn't exist.
  */
-function getPlaidIndexById(transactions, id) {
+function getIndexOfIdFromPlaid(plaidTxns, id) {
 
-  for (let i = 0; i < transactions.length; i++) {
-    if (transactions[i].transaction_id === id) {
+  for (let i = 0; i < plaidTxns.length; i++) {
+    if (plaidTxns[i].transaction_id === id) {
       return i;
-    } else if (transactions[i].pending_transaction_id === id) {
+    } else if (plaidTxns[i].pending_transaction_id === id) {
       return i;
     }
   }
@@ -278,43 +278,43 @@ function getPlaidIndexById(transactions, id) {
 
 
 /**
- * Inserts the transaction into transactions in the correct place.
+ * Inserts the sheet transaction into the sheet transactions in the correct place.
  *
- * @param {Object[]} transactions the list of transactions.
- * @param {Object} transaction the transaction to insert.
- * @return {Object[]} the updated transactions.
+ * @param {Object[]} sheetTxns the list of transactions from the sheet.
+ * @param {Object} sheetTxn the sheet transaction to insert.
+ * @return {Object[]} the updated sheet transactions.
  */
-function insertNewTransaction(transactions, transaction) {
+function saveNewSheetTransaction(sheetTxns, sheetTxn) {
 
   // Insert it when we first encounter an existing one with a smaller date
-  for (let i = 0; i < transactions.length; i++) {
-    if (transaction.date >= transactions[i].date) {
-      transactions.splice(i, 0, transaction);
-      return transactions;
+  for (let i = 0; i < sheetTxns.length; i++) {
+    if (sheetTxn.date >= sheetTxns[i].date) {
+      sheetTxns.splice(i, 0, sheetTxn);
+      return sheetTxns;
     }
   }
 
   // If the new transaction is the oldest then add it at the end
-  transactions.push(transaction);
-  return transactions;
+  sheetTxns.push(sheetTxn);
+  return sheetTxns;
 
 }
 
 
 /**
- * Writes the transactions to the sheet.
+ * Writes the sheet transactions to the sheet.
  *
  * @param {SpreadsheetApp.Sheet} sheet the sheet to write the transactions to.
- * @param {Object[]} transactions the transactions to write.
+ * @param {Object[]} sheetTxns the sheet transactions to write.
  * @param {string[]} headers the headers of the sheet.
  */
-function writeTransactionsToSheet(sheet, transactions, headers) {
+function writeTransactionsToSheet(sheet, sheetTxns, headers) {
 
   const result = [];
-  for (let i = 0; i < transactions.length; i++) {
+  for (let i = 0; i < sheetTxns.length; i++) {
 
     const row = headers.slice();
-    for (const [key, value] of Object.entries(transactions[i])) {
+    for (const [key, value] of Object.entries(sheetTxns[i])) {
       if (key === "date") {
         let date = new Date();
         date.setTime(value);
@@ -327,7 +327,7 @@ function writeTransactionsToSheet(sheet, transactions, headers) {
 
   }
 
-  sheet.deleteRows(9, sheet.getLastRow() - getHeaderRowNumber(sheet) + 1);
+  sheet.deleteRows(getHeaderRowNumber(sheet) + 2, sheet.getLastRow() - (getHeaderRowNumber(sheet) + 1));
   sheet.insertRowsAfter(getHeaderRowNumber(sheet) + 1, result.length - 1);
   sheet.getRange(getHeaderRowNumber(sheet) + 1, 1, result.length, sheet.getLastColumn()).setValues(result);
 
@@ -358,7 +358,7 @@ function updateTransactions() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions");
 
   const existing = getTransactionsFromSheet(sheet);
-  const result = downloadAllTransactions();
+  const plaid = downloadAllTransactionsFromPlaid();
 
   // Prepare to determine changes
   const changes = {
@@ -366,34 +366,34 @@ function updateTransactions() {
     "removed": []
   };
 
-  for (let i = 0; i < result.transactions.length; i++) {
+  for (let i = 0; i < plaid.transactions.length; i++) {
 
-    let existingTransaction = undefined;
+    let existingTxn = undefined;
     let existingIndex;
 
     // Search for it in existing
-    existingIndex = getExistingIndex(existing.transactions, result.transactions[i]);
+    existingIndex = getIndexOfPlaidFromSheet(existing.transactions, plaid.transactions[i]);
     if (existingIndex >= 0) {
-      existingTransaction = existing.transactions[existingIndex]
+      existingTxn = existing.transactions[existingIndex]
     }
 
     // Update existing with the transaction
-    const newTransaction = plaidToSheet(result.transactions[i], existingTransaction);
+    const newSheetTxn = plaidToSheet(plaid.transactions[i], existingTxn);
     if (existingIndex >= 0) {
-      existing.transactions[existingIndex] = newTransaction;
+      existing.transactions[existingIndex] = newSheetTxn;
     } else {
-      existing.transactions = insertNewTransaction(existing.transactions, newTransaction);
-      changes.added.push(newTransaction);
+      existing.transactions = saveNewSheetTransaction(existing.transactions, newSheetTxn);
+      changes.added.push(newSheetTxn);
     }
 
   }
   Logger.log("Finished iterating through Plaid transactions.");
 
   // Find which old transactions have been removed
-  for (const transaction of existing.transactions) {
-    if (getPlaidIndexById(result.transactions, transaction.id) === -1) {
-      existing.transactions.splice(existing.transactions.indexOf(transaction), 1);
-      changes.removed.push(transaction);
+  for (const sheetTxn of existing.transactions) {
+    if (getIndexOfIdFromPlaid(plaid.transactions, sheetTxn.id) === -1) {
+      existing.transactions.splice(existing.transactions.indexOf(sheetTxn), 1);
+      changes.removed.push(sheetTxn);
     }
   }
 
@@ -424,17 +424,17 @@ function updateTransactions() {
       const ui = SpreadsheetApp.getUi();
       let message = "";
       if (changes.added.length > 0) {
-        for (const transaction of changes.added) {
+        for (const sheetTxn of changes.added) {
           let date = new Date();
-          date.setTime(transaction.date);
-          message = `${message}ADDED: £${transaction.amount} on ${formatDate(date)} from ${transaction.name}.\r\n`
+          date.setTime(sheetTxn.date);
+          message = `${message}ADDED: £${sheetTxn.amount} on ${formatDate(date)} from ${sheetTxn.name}.\r\n`
         }
       }
       if (changes.removed.length > 0) {
-        for (const transaction of changes.removed) {
+        for (const sheetTxn of changes.removed) {
           let date = new Date();
-          date.setTime(transaction.date);
-          message = `${message}REMOVED: £${transaction.amount} on ${formatDate(date)} from ${transaction.name}.\r\n`
+          date.setTime(sheetTxn.date);
+          message = `${message}REMOVED: £${sheetTxn.amount} on ${formatDate(date)} from ${sheetTxn.name}.\r\n`
         }
       }
       ui.alert(`${changes.added.length} added | ${changes.removed.length} removed`, message, ui.ButtonSet.OK);
@@ -528,7 +528,7 @@ function formatNeatlyTransactions() {
 
   // Recreate the filter
   amountRange.getFilter().remove();
-  sheet.getRange(getHeaderRowNumber(sheet), 1, sheet.getLastRow() - getHeaderRowNumber(sheet) - 1, sheet.getLastColumn()).createFilter();
+  sheet.getRange(getHeaderRowNumber(sheet), 1, sheet.getLastRow() - (getHeaderRowNumber(sheet) - 1), sheet.getLastColumn()).createFilter();
 }
 
 
