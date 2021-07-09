@@ -39,10 +39,24 @@ function makeRequest(url, params) {
 
 /**
  * Downloads and returns all transactions.
- *
+ * 
  * @return {Object} the result of transactions.get, with all transactions.
  */
 function downloadAllTransactions() {
+
+  /*// Force Plaid to refresh the transactions
+  let params = {
+    "contentType": "application/json",
+    "method": "post",
+    "payload": JSON.stringify({
+      "client_id": getSecrets().CLIENT_ID,
+      "secret": getSecrets().SECRET,
+      "access_token": getSecrets().ACCESS_TOKEN
+    }),
+    "muteHttpExceptions": true
+  };
+  makeRequest(`${getSecrets().URL}/transactions/refresh`, params);
+*/
 
   // Prepare the request body
   const body = {
@@ -58,7 +72,7 @@ function downloadAllTransactions() {
   };
 
   // Condense the above into a single object
-  const params = {
+  params = {
     "contentType": "application/json",
     "method": "post",
     "payload": JSON.stringify(body),
@@ -66,7 +80,7 @@ function downloadAllTransactions() {
   };
 
   // Make the first POST request
-  const result = JSON.parse(makeRequest(getSecrets().URL, params));
+  const result = JSON.parse(makeRequest(`${getSecrets().URL}/transactions/get`, params));
   const total_count = result.total_transactions;
   let offset = 0;
   let r;
@@ -78,14 +92,12 @@ function downloadAllTransactions() {
     offset = offset + 500;
     body.options.offset = offset;
     params.payload = JSON.stringify(body);
-    r = JSON.parse(makeRequest(getSecrets().URL, params));
+    r = JSON.parse(makeRequest(`${getSecrets().URL}/transactions/get`, params));
     result.transactions = result.transactions.concat(r.transactions);
   }
 
   // Replace the dates with JavaScript dates
-  for (let i = 0; i < result.transactions.length; i++) {
-    result.transactions[i].date = Date.parse(result.transactions[i].date);
-  }
+  for (const transaction of result.transactions) transaction.date = Date.parse(transaction.date);
 
   Logger.log(`We downloaded ${result.transactions.length} transactions from Plaid.`);
   return result;
