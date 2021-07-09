@@ -119,18 +119,18 @@ function getTransactionsFromSheet(sheet) {
   result.current = 0.0;
 
   // Get the headers
-  result.headers = sheet.getRange(7, 1, 1, sheet.getLastColumn()).getValues().flat();
+  result.headers = sheet.getRange(getHeaderRowNumber(sheet), 1, 1, sheet.getLastColumn()).getValues().flat();
   result.headers = result.headers.map(item => item.replace("?", ""));
   result.headers = result.headers.map(item => item.toLowerCase());
 
   // Don't bother if it's empty
-  if (sheet.getLastRow() === 7) {
+  if (sheet.getLastRow() === getHeaderRowNumber(sheet)) {
     Logger.log(`We fetched ${result.transactions.length} transactions from the sheet named ${sheet.getName()}.`);
     return result;
   }
 
   // Get the transactions, starting with most recent
-  const values = sheet.getRange(8, 1, sheet.getLastRow() - 7, sheet.getLastColumn()).getValues();
+  const values = sheet.getRange(getHeaderRowNumber(sheet) + 1, 1, sheet.getLastRow() - getHeaderRowNumber(sheet), sheet.getLastColumn()).getValues();
   for (let i = 0; i < values.length; i++) {
     const newTransaction = {};
     for (let j = 0; j < result.headers.length; j++) {
@@ -327,9 +327,9 @@ function writeTransactionsToSheet(sheet, transactions, headers) {
 
   }
 
-  sheet.deleteRows(9, sheet.getLastRow() - 8);
-  sheet.insertRowsAfter(8, result.length - 1);
-  sheet.getRange(8, 1, result.length, sheet.getLastColumn()).setValues(result);
+  sheet.deleteRows(9, sheet.getLastRow() - getHeaderRowNumber(sheet) + 1);
+  sheet.insertRowsAfter(getHeaderRowNumber(sheet) + 1, result.length - 1);
+  sheet.getRange(getHeaderRowNumber(sheet) + 1, 1, result.length, sheet.getLastColumn()).setValues(result);
 
 }
 
@@ -465,7 +465,7 @@ function formatNeatlyTransactions() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Transactions");
 
   // Get the headers
-  let headers = sheet.getRange(7, 1, 1, sheet.getLastColumn()).getValues().flat();
+  let headers = sheet.getRange(getHeaderRowNumber(sheet), 1, 1, sheet.getLastColumn()).getValues().flat();
   headers = headers.map(item => item.replace("?", ""));
   headers = headers.map(item => item.toLowerCase());
 
@@ -474,7 +474,7 @@ function formatNeatlyTransactions() {
 
   // Create named ranges
   for (let i = 0; i < headers.length; i++) {
-    const range = sheet.getRange(8, i + 1, sheet.getLastRow() - 7, 1);
+    const range = sheet.getRange(getHeaderRowNumber(sheet) + 1, i + 1, sheet.getLastRow() - getHeaderRowNumber(sheet), 1);
     SpreadsheetApp.getActiveSpreadsheet().setNamedRange(`${headers[i]}s`, range)
   }
 
@@ -517,7 +517,7 @@ function formatNeatlyTransactions() {
   range.setDataValidation(rule);
 
   // Freeze the top rows and hide the first column
-  sheet.setFrozenRows(7);
+  sheet.setFrozenRows(getHeaderRowNumber(sheet));
   sheet.hideColumn(sheet.getRange("A1"));
 
   // Add protection for ranges that shouldn't be edited
@@ -528,7 +528,7 @@ function formatNeatlyTransactions() {
 
   // Recreate the filter
   amountRange.getFilter().remove();
-  sheet.getRange(7, 1, sheet.getLastRow() - 6, sheet.getLastColumn()).createFilter();
+  sheet.getRange(getHeaderRowNumber(sheet), 1, sheet.getLastRow() - getHeaderRowNumber(sheet) - 1, sheet.getLastColumn()).createFilter();
 }
 
 
