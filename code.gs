@@ -456,7 +456,7 @@ function updateTransactions() {
   }
 
   // Update when this script was last run
-  const range = sheet.getRange(1, sheet.getLastColumn());
+  const range = sheet.getRange(getHeaderRowNumber(sheet) - 1, sheet.getLastColumn());
   if (range !== undefined) {
     const date = new Date();
     let minutes = date.getMinutes().toString();
@@ -480,7 +480,7 @@ function getPlaidAccountTotals(account) {
 
   // For a credit card account
   if (account.type === "credit") {
-    result.available = account.balances.limit - account.balances.available;
+    result.available = -(account.balances.limit - account.balances.available);
     result.current = -account.balances.current;
     result.pending = result.available - result.current;
 
@@ -516,11 +516,12 @@ function formatNeatlyTransactions(plaidResult = undefined) {
   // Create named ranges
   for (let i = 0; i < headers.length; i++) {
     const range = sheet.getRange(getHeaderRowNumber(sheet) + 1, i + 1, sheet.getLastRow() - getHeaderRowNumber(sheet), 1);
-    SpreadsheetApp.getActiveSpreadsheet().setNamedRange(`${headers[i]}s`, range)
+    SpreadsheetApp.getActiveSpreadsheet().setNamedRange(`${headers[i]}s`, range);
   }
 
   if (plaidResult !== undefined) {
     sheet.deleteRows(1, getHeaderRowNumber(sheet) - 2);
+    Logger.log(`There are ${plaidResult.accounts.length} account(s).`)
     if (plaidResult.accounts.length === 1) {
       sheet.insertRows(1, 2)
 
@@ -550,31 +551,30 @@ function formatNeatlyTransactions(plaidResult = undefined) {
       grandTotals.pending = 0;
 
       // For each account
-      for (let i = 1; i < plaidResult.accounts.length - 1; i++) {
-
-        Logger.log(`Using Account ${JSON.stringify(plaidResult.accounts[i - 1])} with i as ${i}`)
+      for (let i = 1; i <= plaidResult.accounts.length; i++) {
 
         // Add the total titles and merge them
         sheet.getRange((i * 3) - 2, 2, 1, amountColNum - 2).setValue(`${plaidResult.accounts[i - 1].name} CURRENT BALANCE`);
-        sheet.getRange((i * 3) - 1, 2, 1, amountColNum - 2).setValue(`${plaidResult.accounts[i - 1].name} AMOUNT PENDING (ACCOUNTED FOR)`);
+        sheet.getRange((i * 3) - 1, 2, 1, amountColNum - 2).setValue(`${plaidResult.accounts[i - 1].name} AMOUNT PENDING`);
         sheet.getRange(i * 3, 2, 1, amountColNum - 2).setValue(`${plaidResult.accounts[i - 1].name} AVAILABLE BALANCE`);
         sheet.getRange((i * 3) - 2, 2, 3, amountColNum - 2).mergeAcross();
 
-        // Extract the totals
+        // Extract the totals, and accumulate the grand totals
         const totals = getPlaidAccountTotals(plaidResult.accounts[i - 1]);
-        grandTotals.available = totals.curravailableent + grandTotals.available;
+        grandTotals.available = totals.available + grandTotals.available;
         grandTotals.current = totals.current + grandTotals.current;
         grandTotals.pending = totals.pending + grandTotals.pending;
 
         // Add the totals themselves
-        sheet.getRange((i * 3) - 2, amountColNum).setValue(`${totals.current}`);
-        sheet.getRange((i * 3) - 1, amountColNum).setValue(`=SUMIFS(amounts, pendings, "=TRUE", accounts, "${plaidResult.accounts[i - 1].name}")`);
-        sheet.getRange(i * 3, amountColNum).setValue(`=${totals.current}-SUMIFS(amounts, pendings, "=TRUE", accounts, "${plaidResult.accounts[i - 1].name}")`);
+        sheet.getRange((i * 3) - 2, amountColNum).setValue(`=ROUND(${totals.current}, 2)`);
+        sheet.getRange((i * 3) - 1, amountColNum).setValue(`=ROUND(${totals.pending}, 2)`);
+        sheet.getRange(i * 3, amountColNum).setValue(`=ROUND(${totals.available}, 2)`);
 
       }
 
+      // Hide the account breakdown, because it takes up too much space
       const startingRow = (plaidResult.accounts.length * 3) + 2;
-      Logger.log(`starting row is ${startingRow}`)
+      sheet.hideRows(1, startingRow - 1);
 
       // Add the total titles and merge them
       sheet.getRange(startingRow, 2, 1, amountColNum - 2).setValue("TOTAL CURRENT BALANCE");
@@ -584,10 +584,10 @@ function formatNeatlyTransactions(plaidResult = undefined) {
       sheet.getRange(startingRow, 2, 4, amountColNum - 2).mergeAcross();
 
       // Add the totals themselves
-      sheet.getRange(startingRow, amountColNum).setValue(`${grandTotals.current}`);
-      sheet.getRange(startingRow + 1, amountColNum).setValue(`=${grandTotals.pending}-SUMIF(pendings, "=TRUE", amounts)`);
+      sheet.getRange(startingRow, amountColNum).setValue(`=ROUND(${grandTotals.current}, 2)`);
+      sheet.getRange(startingRow + 1, amountColNum).setValue(`=ROUND(${grandTotals.pending}, 2)-SUMIF(pendings, "=TRUE", amounts)`);
       sheet.getRange(startingRow + 2, amountColNum).setValue(`=SUMIF(pendings, "=TRUE", amounts)`);
-      sheet.getRange(startingRow + 3, amountColNum).setValue(`=${grandTotals.current}-${grandTotals.pending}`);
+      sheet.getRange(startingRow + 3, amountColNum).setValue(`=ROUND(${grandTotals.available}, 2)`);
 
     }
   }
@@ -618,13 +618,14 @@ function formatNeatlyTransactions(plaidResult = undefined) {
   rule = SpreadsheetApp.newDataValidation().requireValueInRange(values, true).setAllowInvalid(false).build();
   range.setDataValidation(rule);
 
-  // Freeze the top rows and hide the first column
+  // Freeze the top rows and hide two columns
   sheet.setFrozenRows(getHeaderRowNumber(sheet));
-  sheet.hideColumn(sheet.getRange("A1"));
+  sheet.hideColumn(sheet.getRange("ids"));
+  sheet.hideColumn(sheet.getRange("accounts"));
 
   // Add protection for ranges that shouldn't be edited
   for (const protection of sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE)) protection.remove();
-  for (const name of ["ids", "dates", "names", "amounts", "pendings"]) {
+  for (const name of ["ids", "dates", "names", "accounts", "amounts", "pendings"]) {
     sheet.getRange(name).protect().setWarningOnly(true);
   }
 
