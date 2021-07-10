@@ -196,6 +196,7 @@ function plaidToSheet(plaidTxn, sheetTxn = undefined) {
     "category": category,
     "subcategory": subcategory,
     "channel": channel,
+    "account": plaidTxn.account_name,
     "amount": -plaidTxn.amount,
     "pending": plaidTxn.pending,
     "internal": internal,
@@ -368,6 +369,16 @@ function updateTransactions() {
 
   for (let i = 0; i < plaid.transactions.length; i++) {
 
+    // Add the account name, to save work later
+    let account_name = "?unknown?";
+    for (let j = 0; j < plaid.accounts.length; j++) {
+      if (plaid.accounts[j].account_id === plaid.transactions[i].account_id) {
+        account_name = plaid.accounts[j].name;
+        break;
+      }
+    }
+    plaid.transactions[i].account_name = account_name;
+
     let existingTxn = undefined;
     let existingIndex;
 
@@ -445,7 +456,7 @@ function updateTransactions() {
   }
 
   // Update when this script was last run
-  const range = sheet.getRange("TransactionsScriptLastRun");
+  const range = sheet.getRange(1, sheet.getLastColumn());
   if (range !== undefined) {
     const date = new Date();
     let minutes = date.getMinutes().toString();
@@ -509,7 +520,7 @@ function formatNeatlyTransactions(plaidResult = undefined) {
   }
 
   if (plaidResult !== undefined) {
-    sheet.deleteRows(1, getHeaderRowNumber() - 1);
+    sheet.deleteRows(1, getHeaderRowNumber(sheet) - 2);
     if (plaidResult.accounts.length === 1) {
       sheet.insertRows(1, 2)
 
@@ -541,6 +552,8 @@ function formatNeatlyTransactions(plaidResult = undefined) {
       // For each account
       for (let i = 1; i < plaidResult.accounts.length - 1; i++) {
 
+        Logger.log(`Using Account ${JSON.stringify(plaidResult.accounts[i - 1])} with i as ${i}`)
+
         // Add the total titles and merge them
         sheet.getRange((i * 3) - 2, 2, 1, amountColNum - 2).setValue(`${plaidResult.accounts[i - 1].name} CURRENT BALANCE`);
         sheet.getRange((i * 3) - 1, 2, 1, amountColNum - 2).setValue(`${plaidResult.accounts[i - 1].name} AMOUNT PENDING (ACCOUNTED FOR)`);
@@ -560,20 +573,21 @@ function formatNeatlyTransactions(plaidResult = undefined) {
 
       }
 
-      const startingRow = (plaidResult.accounts.length * 3) + 1;
+      const startingRow = (plaidResult.accounts.length * 3) + 2;
+      Logger.log(`starting row is ${startingRow}`)
 
       // Add the total titles and merge them
       sheet.getRange(startingRow, 2, 1, amountColNum - 2).setValue("TOTAL CURRENT BALANCE");
       sheet.getRange(startingRow + 1, 2, 1, amountColNum - 2).setValue("TOTAL AMOUNT PENDING (UNACCOUNTED FOR)");
       sheet.getRange(startingRow + 2, 2, 1, amountColNum - 2).setValue("TOTAL AMOUNT PENDING (ACCOUNTED FOR)");
       sheet.getRange(startingRow + 3, 2, 1, amountColNum - 2).setValue("TOTAL AVAILABLE BALANCE");
-      sheet.getRange(1, 2, 4, amountColNum - 2).mergeAcross();
+      sheet.getRange(startingRow, 2, 4, amountColNum - 2).mergeAcross();
 
       // Add the totals themselves
-      sheet.getRange(1, amountColNum).setValue(`${grandTotals.current}`);
-      sheet.getRange(2, amountColNum).setValue(`=${grandTotals.pending}-SUMIF(pendings, "=TRUE", amounts)`);
-      sheet.getRange(3, amountColNum).setValue(`=SUMIF(pendings, "=TRUE", amounts)`);
-      sheet.getRange(4, amountColNum).setValue(`=${grandTotals.current}-${grandTotals.pending}`);
+      sheet.getRange(startingRow, amountColNum).setValue(`${grandTotals.current}`);
+      sheet.getRange(startingRow + 1, amountColNum).setValue(`=${grandTotals.pending}-SUMIF(pendings, "=TRUE", amounts)`);
+      sheet.getRange(startingRow + 2, amountColNum).setValue(`=SUMIF(pendings, "=TRUE", amounts)`);
+      sheet.getRange(startingRow + 3, amountColNum).setValue(`=${grandTotals.current}-${grandTotals.pending}`);
 
     }
   }
