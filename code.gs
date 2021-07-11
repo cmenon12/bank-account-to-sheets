@@ -484,11 +484,17 @@ function getPlaidAccountTotals(account) {
     result.current = -account.balances.current;
     result.pending = result.available - result.current;
 
-    // For a depository (normal current) account
+    // For a depository (normal current) account, or anything else
   } else {
-    result.available = account.balances.available;
-    result.current = account.balances.current;
-    result.pending = result.available - result.current;
+    if (account.balances.available === null) {
+      result.available = account.balances.current;
+      result.current = account.balances.current;
+      result.pending = 0;
+    } else {
+      result.available = account.balances.available;
+      result.current = account.balances.current;
+      result.pending = result.available - result.current;
+    }
   }
 
   return result;
