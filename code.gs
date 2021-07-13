@@ -682,6 +682,31 @@ function getHeaderRowNumber(sheet) {
 
 
 /**
+ * Runs whenever a cell is edited.
+ * Updates the subcategory data validation to match the corresponding category.
+ * 
+ * @param {Object} e the event object
+ */
+function onEdit(e) {
+
+  // Check that they edited the category
+  if (e.range.getSheet().getName() !== "Transactions") {
+    return;
+  }
+  const sheet = e.range.getSheet();
+  let headers = sheet.getRange(getHeaderRowNumber(sheet), 1, 1, sheet.getLastColumn()).getValues().flat();
+  headers = headers.map(item => item.replace("?", ""));
+  headers = headers.map(item => item.toLowerCase());
+  if (e.range.columnStart !== (headers.indexOf("category") + 1) || e.range.columnEnd !== (headers.indexOf("category") + 1)) {
+    return;
+  }
+
+  Logger.log(JSON.stringify(e));
+
+}
+
+
+/**
  * Runs all the formatNeatly functions.
  */
 function formatAll() {
