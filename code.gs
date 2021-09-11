@@ -174,10 +174,15 @@ function plaidToSheet(plaidTxn, sheetTxn = undefined) {
   if (sheetTxn === undefined) {
     internal = false;
     notes = "";
-    category = plaidTxn.category[0];
-    subcategory = "";
-    for (const subcat of plaidTxn.category.slice(1)) subcategory = subcategory + subcat + " ";
-    subcategory = subcategory.slice(0, -1);
+    if (plaidTxn.category === null) {
+      category = "UNKNOWN";
+      subcategory = "UNKNOWN";
+    } else {
+      category = plaidTxn.category[0];
+      subcategory = "";
+      for (const subcat of plaidTxn.category.slice(1)) subcategory = subcategory + subcat + " ";
+      subcategory = subcategory.slice(0, -1);
+    }
     channel = plaidTxn.payment_channel;
 
   } else {
