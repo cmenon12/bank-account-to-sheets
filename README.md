@@ -1,8 +1,6 @@
 # Bank Account to Google Sheets
 This is a Google Apps script that imports transactions from one or more bank accounts into Google Sheets via Plaid. It displays them in reverse chronological order (newest first) along with a current total. Transactions are dated, named and categorised, and distinction is given to those that are pending (and therefore might change). A summary sheet is also available that groups transactions by week, and divides this into categories of interest. Updates can be made by the user manually or scheduled to occur automatically.
 
-A live copy with 'real' data (from Plaid's sandbox) can be found published here: [https://docs.google.com/spreadsheets/d/e/2PACX-1vRP09PYf-qfx6MUJxNPPLRD2-CYebTiUjMWbMKLmM8k_xSr661UnQGGCdfNaNld_f97cg9_A-JPCTrs/pubhtml](https://docs.google.com/spreadsheets/d/e/2PACX-1vRP09PYf-qfx6MUJxNPPLRD2-CYebTiUjMWbMKLmM8k_xSr661UnQGGCdfNaNld_f97cg9_A-JPCTrs/pubhtml). Unfortunately, the sandbox data doesn't include all transactions in every account, which is why the running totals in the Weekly Summary sheet don't match the current total on the Transactions sheet.
-
 
 ## Setup
 You'll need to sign-up for a developer account on Plaid ([here](https://dashboard.plaid.com/signup)). You'll  be prompted to create a 'team' and then granted immediate access to the 'Sandbox' environment, which uses test data. However, in order to use this app you'll need to request access to the 'Development' environment ([here](https://dashboard.plaid.com/overview/development)), which will allow you to create up to 100 access tokens (each authorisation with an institution requires an access token). This will take a day or so to be approved.
